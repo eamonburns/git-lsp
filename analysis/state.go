@@ -72,6 +72,30 @@ func (self *State) Hover(id int, uri string, position lsp.Position) lsp.HoverRes
 	}
 }
 
+func (self *State) TextDocumentCompletion(id int, uri string, position lsp.Position) lsp.CompletionResponse {
+	// TODO: Get completions
+	items := []lsp.CompletionItem{
+		{
+			Label:         "Neovim (BTW)",
+			Detail:        "Very cool editor",
+			Documentation: "Fun to watch in videos :)",
+		},
+		{
+			Label:         "Position",
+			Detail:        fmt.Sprintf("line: %d, character: %d", position.Line, position.Character),
+			Documentation: "Current position in the file",
+		},
+	}
+
+	return lsp.CompletionResponse{
+		Response: lsp.Response{
+			RPC: "2.0",
+			ID:  &id,
+		},
+		Result: items,
+	}
+}
+
 func LineRange(line int, start int, end int) lsp.Range {
 	return lsp.Range{
 		Start: lsp.Position{
