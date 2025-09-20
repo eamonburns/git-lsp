@@ -123,6 +123,18 @@ func handleMessage(writer io.Writer, state analysis.State, method string, conten
 			})
 			logger.Info("Sent diagnostics response for changed file")
 		}
+	case "textDocument/hover":
+		var request lsp.HoverRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Error("unable to parse request", "error", err)
+			return
+		}
+
+		logger.Info("hover file", "uri", request.Params.URI, "position", request.Params.Position)
+
+		response := state.Hover(request.ID, request.Params.URI, request.Params.Position)
+
+		writeResponse(writer, response)
 	}
 }
 

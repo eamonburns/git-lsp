@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/eamonburns/git-lsp/lsp"
@@ -55,6 +56,20 @@ func (self *State) UpdateDocument(uri string, text string) []lsp.Diagnostic {
 	self.Documents[uri] = text
 
 	return getDiagnosticsForFile(text)
+}
+
+func (self *State) Hover(id int, uri string, position lsp.Position) lsp.HoverResponse {
+	document := self.Documents[uri]
+
+	return lsp.HoverResponse{
+		Response: lsp.Response{
+			RPC: "2.0",
+			ID:  &id,
+		},
+		Result: lsp.HoverResult{
+			Contents: fmt.Sprintf("# Document attributes\n\n- URI: %s\n- Characters: %d", uri, len(document)),
+		},
+	}
 }
 
 func LineRange(line int, start int, end int) lsp.Range {
