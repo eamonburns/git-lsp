@@ -89,6 +89,17 @@ func handleMessage(writer io.Writer, state analysis.State, method string, conten
 		slog.Info("opened file", "uri", request.Params.TextDocument.URI)
 		diagnostics := state.OpenDocument(request.Params.TextDocument.URI, request.Params.TextDocument.Text)
 		_ = diagnostics
+
+		writeResponse(writer, lsp.PublishDiagnosticsNotification{
+			Notification: lsp.Notification{
+				RPC:    "2.0",
+				Method: "textDocument/publishDiagnostics",
+			},
+			Params: lsp.PublishDiagnosticsParams{
+				URI:         request.Params.TextDocument.URI,
+				Diagnostics: diagnostics,
+			},
+		})
 	}
 }
 
