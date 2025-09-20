@@ -76,14 +76,16 @@ func (self *State) TextDocumentCompletion(id int, uri string, position lsp.Posit
 	// TODO: Get completions
 	items := []lsp.CompletionItem{
 		{
-			Label:         "Neovim (BTW)",
+			Label:         "NeoVim (BTW)",
 			Detail:        "Very cool editor",
 			Documentation: "Fun to watch in videos :)",
+			Kind:          lsp.CompletionItemKindText,
 		},
 		{
 			Label:         "Position",
 			Detail:        fmt.Sprintf("line: %d, character: %d", position.Line, position.Character),
 			Documentation: "Current position in the file",
+			Kind:          lsp.CompletionItemKindText,
 		},
 	}
 

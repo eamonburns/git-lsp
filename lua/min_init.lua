@@ -20,3 +20,5 @@ vim.lsp.config["git-lsp"] = {
 }
 
 vim.lsp.enable("git-lsp")
+
+vim.o.winborder = "rounded"
