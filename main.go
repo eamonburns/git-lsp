@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/eamonburns/git-lsp/analysis"
 	"github.com/eamonburns/git-lsp/lsp"
 	"github.com/eamonburns/git-lsp/rpc"
 )
@@ -42,10 +43,8 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Split(rpc.Split)
 
-	state := any(nil) // TODO:
-	_ = state
+	state := analysis.NewState()
 	writer := os.Stdout
-	_ = writer
 
 	for scanner.Scan() {
 		msg := scanner.Bytes()
@@ -59,7 +58,7 @@ func main() {
 	}
 }
 
-func handleMessage(writer io.Writer, state any, method string, contents []byte) {
+func handleMessage(writer io.Writer, state analysis.State, method string, contents []byte) {
 	slog.Info("Recieved message", "method", method)
 
 	switch method {
@@ -67,6 +66,7 @@ func handleMessage(writer io.Writer, state any, method string, contents []byte) 
 		var request lsp.InitializeRequest
 		if err := json.Unmarshal(contents, &request); err != nil {
 			slog.Error("unable to parse request", "error", err)
+			return
 		}
 
 		slog.Info(
@@ -75,6 +75,25 @@ func handleMessage(writer io.Writer, state any, method string, contents []byte) 
 			"version", request.Params.ClientInfo.Version,
 		)
 
-		// TODO: Respond
+		msg := lsp.NewInitializeResponse(request.ID)
+		writeResponse(writer, msg)
+
+		slog.Info("Sent initialize response")
+	case "textDocument/didOpen":
+		var request lsp.DidOpenTextDocumentNotification
+		if err := json.Unmarshal(contents, &request); err != nil {
+			slog.Error("unable to parse request", "error", err)
+			return
+		}
+
+		slog.Info("opened file", "uri", request.Params.TextDocument.URI)
+		diagnostics := state.OpenDocument(request.Params.TextDocument.URI, request.Params.TextDocument.Text)
+		_ = diagnostics
 	}
+}
+
+func writeResponse(writer io.Writer, msg any) {
+	reply := rpc.EncodeMessage(msg)
+
+	writer.Write([]byte(reply))
 }

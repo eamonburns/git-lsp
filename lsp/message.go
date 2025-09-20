@@ -8,3 +8,16 @@ type Request struct {
 	// We will want to specify the types of parameters in all the Request types
 	// Params ...
 }
+
+type Response struct {
+	RPC string `json:"jsonrpc"`
+	ID  *int   `json:"id,omitempty"`
+
+	// Result
+	// Error
+}
+
+type Notification struct {
+	RPC    string `json:"jsonrpc"`
+	Method string `json:"method"`
+}

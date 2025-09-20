@@ -4,8 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"strconv"
 )
+
+func EncodeMessage(msg any) string {
+	content, err := json.Marshal(msg)
+	if err != nil {
+		slog.Error("unable to marshal message to json", "message", msg, "error", err)
+		panic(err)
+	}
+
+	return fmt.Sprintf("Content-Length: %d\r\n\r\n%s", len(content), content)
+}
 
 type BaseMessage struct {
 	Method string `json:"method"`
