@@ -2,8 +2,8 @@ package analysis
 
 import (
 	"fmt"
-	"strings"
 
+	"github.com/eamonburns/git-lsp/commit"
 	"github.com/eamonburns/git-lsp/lsp"
 )
 
@@ -16,34 +16,38 @@ func NewState() State {
 }
 
 func getDiagnosticsForFile(text string) []lsp.Diagnostic {
-	diagnostcs := []lsp.Diagnostic{}
+	_, diagnostics := commit.Parse(text)
 
-	vsCode := "VS Code"
-	neoVim := "NeoVim"
+	return diagnostics
 
-	for row, line := range strings.Split(text, "\n") {
-		if strings.Contains(line, vsCode) {
-			idx := strings.Index(line, vsCode)
-			diagnostcs = append(diagnostcs, lsp.Diagnostic{
-				Range:    LineRange(row, idx, idx+len(vsCode)),
-				Severity: 1,
-				Source:   "Common sense",
-				Message:  "Please make sure we use good language in this video",
-			})
-		}
-
-		if strings.Contains(line, neoVim) {
-			idx := strings.Index(line, neoVim)
-			diagnostcs = append(diagnostcs, lsp.Diagnostic{
-				Range:    LineRange(row, idx, idx+len(neoVim)),
-				Severity: 3,
-				Source:   "Common sense",
-				Message:  "Great choice",
-			})
-		}
-	}
-
-	return diagnostcs
+	// diagnostcs := []lsp.Diagnostic{}
+	//
+	// vsCode := "VS Code"
+	// neoVim := "NeoVim"
+	//
+	// for row, line := range strings.Split(text, "\n") {
+	// 	if strings.Contains(line, vsCode) {
+	// 		idx := strings.Index(line, vsCode)
+	// 		diagnostcs = append(diagnostcs, lsp.Diagnostic{
+	// 			Range:    LineRange(row, idx, idx+len(vsCode)),
+	// 			Severity: 1,
+	// 			Source:   "Common sense",
+	// 			Message:  "Please make sure we use good language in this video",
+	// 		})
+	// 	}
+	//
+	// 	if strings.Contains(line, neoVim) {
+	// 		idx := strings.Index(line, neoVim)
+	// 		diagnostcs = append(diagnostcs, lsp.Diagnostic{
+	// 			Range:    LineRange(row, idx, idx+len(neoVim)),
+	// 			Severity: 3,
+	// 			Source:   "Common sense",
+	// 			Message:  "Great choice",
+	// 		})
+	// 	}
+	// }
+	//
+	// return diagnostcs
 }
 
 func (self *State) OpenDocument(uri string, text string) []lsp.Diagnostic {
@@ -95,18 +99,5 @@ func (self *State) TextDocumentCompletion(id int, uri string, position lsp.Posit
 			ID:  &id,
 		},
 		Result: items,
-	}
-}
-
-func LineRange(line int, start int, end int) lsp.Range {
-	return lsp.Range{
-		Start: lsp.Position{
-			Line:      line,
-			Character: start,
-		},
-		End: lsp.Position{
-			Line:      line,
-			Character: end,
-		},
 	}
 }

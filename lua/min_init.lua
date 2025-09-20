@@ -14,7 +14,7 @@ end
 vim.lsp.config["git-lsp"] = {
 	cmd = { "./build/git-lsp" },
 
-	filetypes = { "lua" },
+	filetypes = { "gitcommit" },
 
 	root_markers = { ".git" },
 }

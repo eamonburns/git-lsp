@@ -1,0 +1,11 @@
+feat(scope): this is a message
+
+Here is the body
+
+Signed-Off-By: Bob <bob@example.com>
+Key: this is a test
+with newlines
+cool
+wowo: fs
+
+# vim: ft=gitcommit
