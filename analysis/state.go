@@ -1,6 +1,10 @@
 package analysis
 
-import "github.com/eamonburns/git-lsp/lsp"
+import (
+	"strings"
+
+	"github.com/eamonburns/git-lsp/lsp"
+)
 
 type State struct {
 	Documents map[string]string
@@ -11,17 +15,43 @@ func NewState() State {
 }
 
 func getDiagnosticsForFile(text string) []lsp.Diagnostic {
-	return []lsp.Diagnostic{
-		{
-			Range:    LineRange(0, 0, 4),
-			Severity: 1,
-			Source:   "my brain",
-			Message:  "There is a thing",
-		},
+	diagnostcs := []lsp.Diagnostic{}
+
+	vsCode := "VS Code"
+	neoVim := "NeoVim"
+
+	for row, line := range strings.Split(text, "\n") {
+		if strings.Contains(line, vsCode) {
+			idx := strings.Index(line, vsCode)
+			diagnostcs = append(diagnostcs, lsp.Diagnostic{
+				Range:    LineRange(row, idx, idx+len(vsCode)),
+				Severity: 1,
+				Source:   "Common sense",
+				Message:  "Please make sure we use good language in this video",
+			})
+		}
+
+		if strings.Contains(line, neoVim) {
+			idx := strings.Index(line, neoVim)
+			diagnostcs = append(diagnostcs, lsp.Diagnostic{
+				Range:    LineRange(row, idx, idx+len(neoVim)),
+				Severity: 3,
+				Source:   "Common sense",
+				Message:  "Great choice",
+			})
+		}
 	}
+
+	return diagnostcs
 }
 
 func (self *State) OpenDocument(uri string, text string) []lsp.Diagnostic {
+	self.Documents[uri] = text
+
+	return getDiagnosticsForFile(text)
+}
+
+func (self *State) UpdateDocument(uri string, text string) []lsp.Diagnostic {
 	self.Documents[uri] = text
 
 	return getDiagnosticsForFile(text)

@@ -59,17 +59,18 @@ func main() {
 }
 
 func handleMessage(writer io.Writer, state analysis.State, method string, contents []byte) {
-	slog.Info("Recieved message", "method", method)
+	logger := slog.With("method", method)
+	logger.Info("Recieved message")
 
 	switch method {
 	case "initialize":
 		var request lsp.InitializeRequest
 		if err := json.Unmarshal(contents, &request); err != nil {
-			slog.Error("unable to parse request", "error", err)
+			logger.Error("unable to parse request", "error", err)
 			return
 		}
 
-		slog.Info(
+		logger.Info(
 			"connected to client",
 			"name", request.Params.ClientInfo.Name,
 			"version", request.Params.ClientInfo.Version,
@@ -78,17 +79,16 @@ func handleMessage(writer io.Writer, state analysis.State, method string, conten
 		msg := lsp.NewInitializeResponse(request.ID)
 		writeResponse(writer, msg)
 
-		slog.Info("Sent initialize response")
+		logger.Info("Sent initialize response")
 	case "textDocument/didOpen":
 		var request lsp.DidOpenTextDocumentNotification
 		if err := json.Unmarshal(contents, &request); err != nil {
-			slog.Error("unable to parse request", "error", err)
+			logger.Error("unable to parse request", "error", err)
 			return
 		}
 
-		slog.Info("opened file", "uri", request.Params.TextDocument.URI)
+		logger.Info("opened file", "uri", request.Params.TextDocument.URI)
 		diagnostics := state.OpenDocument(request.Params.TextDocument.URI, request.Params.TextDocument.Text)
-		_ = diagnostics
 
 		writeResponse(writer, lsp.PublishDiagnosticsNotification{
 			Notification: lsp.Notification{
@@ -100,6 +100,29 @@ func handleMessage(writer io.Writer, state analysis.State, method string, conten
 				Diagnostics: diagnostics,
 			},
 		})
+		logger.Info("Sent diagnostics response for opened file")
+	case "textDocument/didChange":
+		var request lsp.DidChangeTextDocumentNotification
+		if err := json.Unmarshal(contents, &request); err != nil {
+			logger.Error("unable to parse request", "error", err)
+			return
+		}
+
+		logger.Info("changed file", "uri", request.Params.TextDocument.URI)
+		for _, change := range request.Params.ContentChanges {
+			diagnostics := state.UpdateDocument(request.Params.TextDocument.URI, change.Text)
+			writeResponse(writer, lsp.PublishDiagnosticsNotification{
+				Notification: lsp.Notification{
+					RPC:    "2.0",
+					Method: "textDocument/publishDiagnostics",
+				},
+				Params: lsp.PublishDiagnosticsParams{
+					URI:         request.Params.TextDocument.URI,
+					Diagnostics: diagnostics,
+				},
+			})
+			logger.Info("Sent diagnostics response for changed file")
+		}
 	}
 }
 
