@@ -2,12 +2,14 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 
+	"github.com/eamonburns/git-lsp/lsp"
 	"github.com/eamonburns/git-lsp/rpc"
 )
 
@@ -49,7 +51,7 @@ func main() {
 		msg := scanner.Bytes()
 		method, contents, err := rpc.DecodeMessage(msg)
 		if err != nil {
-			slog.Info("error while decoding message", "error", err)
+			slog.Info("unable to decode message", "error", err)
 			continue
 		}
 
@@ -59,4 +61,20 @@ func main() {
 
 func handleMessage(writer io.Writer, state any, method string, contents []byte) {
 	slog.Info("Recieved message", "method", method)
+
+	switch method {
+	case "initialize":
+		var request lsp.InitializeRequest
+		if err := json.Unmarshal(contents, &request); err != nil {
+			slog.Error("unable to parse request", "error", err)
+		}
+
+		slog.Info(
+			"connected to client",
+			"name", request.Params.ClientInfo.Name,
+			"version", request.Params.ClientInfo.Version,
+		)
+
+		// TODO: Respond
+	}
 }
