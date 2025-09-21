@@ -16,38 +16,15 @@ func NewState() State {
 }
 
 func getDiagnosticsForFile(text string) []lsp.Diagnostic {
-	_, diagnostics := commit.Parse(text)
+	_, commitDiagnostics := commit.Parse(text)
 
-	return diagnostics
+	lspDiagnostics := make([]lsp.Diagnostic, len(commitDiagnostics))
 
-	// diagnostcs := []lsp.Diagnostic{}
-	//
-	// vsCode := "VS Code"
-	// neoVim := "NeoVim"
-	//
-	// for row, line := range strings.Split(text, "\n") {
-	// 	if strings.Contains(line, vsCode) {
-	// 		idx := strings.Index(line, vsCode)
-	// 		diagnostcs = append(diagnostcs, lsp.Diagnostic{
-	// 			Range:    LineRange(row, idx, idx+len(vsCode)),
-	// 			Severity: 1,
-	// 			Source:   "Common sense",
-	// 			Message:  "Please make sure we use good language in this video",
-	// 		})
-	// 	}
-	//
-	// 	if strings.Contains(line, neoVim) {
-	// 		idx := strings.Index(line, neoVim)
-	// 		diagnostcs = append(diagnostcs, lsp.Diagnostic{
-	// 			Range:    LineRange(row, idx, idx+len(neoVim)),
-	// 			Severity: 3,
-	// 			Source:   "Common sense",
-	// 			Message:  "Great choice",
-	// 		})
-	// 	}
-	// }
-	//
-	// return diagnostcs
+	for i, d := range commitDiagnostics {
+		lspDiagnostics[i] = d.ToLspDiagnostic()
+	}
+
+	return lspDiagnostics
 }
 
 func (self *State) OpenDocument(uri string, text string) []lsp.Diagnostic {

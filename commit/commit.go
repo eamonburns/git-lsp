@@ -1,6 +1,7 @@
 package commit
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/eamonburns/git-lsp/internal/helper"
@@ -28,8 +29,8 @@ type Commit struct {
 	Footers map[string]string
 }
 
-func Parse(text string) (Commit, []lsp.Diagnostic) {
-	diagnostics := []lsp.Diagnostic{}
+func Parse(text string) (Commit, []Diagnostic) {
+	diagnostics := []Diagnostic{}
 	header, rest, found := strings.Cut(text, "\n")
 
 	commit := Commit{}
@@ -49,43 +50,44 @@ func Parse(text string) (Commit, []lsp.Diagnostic) {
 		}
 
 		// Extract scope if present
-		if idx := strings.Index(typeScope, "("); idx != -1 {
-			commit.Type = typeScope[:idx]
-			scope := typeScope[idx+1:]
+		if lParIdx := strings.Index(typeScope, "("); lParIdx != -1 {
+			commit.Type = typeScope[:lParIdx]
 
-			idx := strings.Index(scope, ")")
+			rParIdx := strings.Index(typeScope, ")")
 
-			if idx == -1 {
-				commit.Scope = scope
-			} else if idx < len(scope)-1 {
-				commit.Scope = scope[:idx]
+			if rParIdx == -1 {
+				commit.Scope = typeScope[lParIdx+1:]
 
-				diagnostics = append(diagnostics, lsp.Diagnostic{
-					Range:    helper.LineRange(0, idx+1, len(typeScope)-1), // FIXME: Invalid range
-					Severity: 1,
-					Source:   "git-lsp",
-					Message:  "Extra characters after end of scope: '%s'",
+				diagnostics = append(diagnostics, Diagnostic{
+					Range: helper.LineRange(0, lParIdx, lParIdx),
+					Type:  UnmatchedLeftParenError,
+				})
+			} else if rParIdx < len(typeScope)-1 {
+				// The right parentheses is not the last character of typeScope
+
+				commit.Scope = typeScope[lParIdx+1 : rParIdx]
+
+				diagnostics = append(diagnostics, Diagnostic{
+					Range: helper.LineRange(0, rParIdx+1, len(typeScope)),
+					Type:  ExtraCharactersAfterScopeError,
+					Args:  []string{typeScope[rParIdx+1:]},
 				})
 			} else {
-				commit.Scope = scope[:idx]
+				commit.Scope = typeScope[lParIdx+1 : rParIdx]
 			}
 		} else if idx := strings.Index(typeScope, ")"); idx != -1 {
-			diagnostics = append(diagnostics, lsp.Diagnostic{
-				Range:    helper.LineRange(0, idx, idx),
-				Severity: 1,
-				Source:   "git-lsp",
-				Message:  "Unmatched ')'",
+			diagnostics = append(diagnostics, Diagnostic{
+				Range: helper.LineRange(0, idx, idx),
+				Type:  UnmatchedRightParenError,
 			})
 			commit.Type = typeScope[:idx]
 		} else {
 			commit.Type = typeScope
 		}
 	} else {
-		diagnostics = append(diagnostics, lsp.Diagnostic{
-			Range:    helper.LineRange(0, 0, len(header)-1),
-			Severity: 1,
-			Source:   "git-lsp",
-			Message:  "No type/scope in header line",
+		diagnostics = append(diagnostics, Diagnostic{
+			Range: helper.LineRange(0, 0, len(header)-1),
+			Type:  NoTypeScopeError,
 		})
 		commit.Description = typeScope // Header line wasn't split, so typeScope is the whole line, which we will use as the description
 	}
@@ -94,4 +96,55 @@ func Parse(text string) (Commit, []lsp.Diagnostic) {
 	_ = rest
 
 	return commit, diagnostics
+}
+
+type DiagnosticType int
+
+// Diagnostic error/warning types
+const (
+	// There was no type/scope in the header line
+	NoTypeScopeError DiagnosticType = iota
+	// There was a right parentheses in the type/scope, but no matching left parentheses
+	UnmatchedRightParenError
+	// There was a left parentheses in the type/scope, but no matching right parentheses
+	UnmatchedLeftParenError
+	// There were extra characters after the scope
+	// Args: 0 = characters
+	ExtraCharactersAfterScopeError
+)
+
+type Diagnostic struct {
+	Range lsp.Range
+	Type  DiagnosticType
+	Args  []string
+}
+
+func (self Diagnostic) ToLspDiagnostic() lsp.Diagnostic {
+	var message string
+	var severity int
+
+	switch self.Type {
+	case NoTypeScopeError:
+		message = "No type/scope in header line"
+		severity = 1
+	case UnmatchedLeftParenError:
+		message = "Unmatched '('"
+		severity = 1
+	case UnmatchedRightParenError:
+		message = "Unmatched ')'"
+		severity = 1
+	case ExtraCharactersAfterScopeError:
+		message = fmt.Sprintf("Extra characters after scope: '%s'", self.Args[0])
+		severity = 1
+	default:
+		message = "Unknown error"
+		severity = 1
+	}
+
+	return lsp.Diagnostic{
+		Range:    self.Range,
+		Severity: severity,
+		Source:   "git-lsp",
+		Message:  message,
+	}
 }

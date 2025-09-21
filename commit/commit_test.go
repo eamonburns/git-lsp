@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/eamonburns/git-lsp/internal/helper"
-	"github.com/eamonburns/git-lsp/lsp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,20 +32,34 @@ func TestParse(t *testing.T) {
 	commitMsg := "no type or scope"
 	commit, diagnostics = Parse(commitMsg)
 
-	assert.ElementsMatch(t, []lsp.Diagnostic{
+	assert.ElementsMatch(t, []Diagnostic{
 		{
-			Range:    helper.LineRange(0, 0, len(commitMsg)-1),
-			Severity: 1,
-			Source:   "git-lsp",
-			Message:  "No type/scope in header line",
+			Range: helper.LineRange(0, 0, len(commitMsg)-1),
+			Type:  NoTypeScopeError,
 		},
 	}, diagnostics)
 	assert.Equal(t, Commit{
 		Description: commitMsg,
 	}, commit)
 
+	commit, diagnostics = Parse("type(scope)bla: description")
+
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 11, 14),
+			Type:  ExtraCharactersAfterScopeError,
+			Args:  []string{"bla"},
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "type",
+		Scope:       "scope",
+		Description: "description",
+	}, commit)
+
 	// TODO: No type: "(scope): description"
 	// TODO: Empty scope: "type(): description"
 	// TODO: No description: "type(scope):"
-	// TODO: Extra characters after scope: "type(scope)bla: description"
+	// TODO: Unmatched '(': "type(scope: description"
+	// TODO: Unmatched ')': "typescope): description"
 }
