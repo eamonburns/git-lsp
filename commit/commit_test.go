@@ -148,3 +148,43 @@ func TestParse(t *testing.T) {
 		Description: "description",
 	}, commit)
 }
+
+func TestParseFooter(t *testing.T) {
+	_, _, ok := ParseFooter("not a footer")
+	require.False(t, ok)
+
+	footer, value, ok := ParseFooter("hash-footer # value")
+	require.True(t, ok)
+	assert.Equal(t, "hash-footer", footer)
+	assert.Equal(t, "value", value)
+
+	footer, value, ok = ParseFooter("colon-footer: value")
+	require.True(t, ok)
+	assert.Equal(t, "colon-footer", footer)
+	assert.Equal(t, "value", value)
+
+	footer, value, ok = ParseFooter("whitespace footer: value")
+	require.False(t, ok)
+
+	footer, value, ok = ParseFooter("colon-footer: # value")
+	require.True(t, ok)
+	assert.Equal(t, "colon-footer", footer)
+	assert.Equal(t, "# value", value)
+
+	footer, value, ok = ParseFooter("hash-footer #: value")
+	require.True(t, ok)
+	assert.Equal(t, "hash-footer", footer)
+	assert.Equal(t, ": value", value)
+
+	// Breaking change whitespace exception
+	footer, value, ok = ParseFooter("BREAKING CHANGE: value")
+	require.True(t, ok)
+	assert.Equal(t, "BREAKING CHANGE", footer)
+	assert.Equal(t, "value", value)
+
+	footer, value, ok = ParseFooter("BREAKING CHANGE # value")
+	require.False(t, ok)
+
+	footer, value, ok = ParseFooter("BREAKING CHANGE # : value")
+	require.False(t, ok)
+}

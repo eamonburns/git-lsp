@@ -190,3 +190,39 @@ func (self Diagnostic) ToLspDiagnostic() lsp.Diagnostic {
 		Message:  message,
 	}
 }
+
+func ParseFooter(s string) (string, string, bool) {
+	// "8. One or more footers MAY be provided one blank line after the body. Each footer MUST consist of a word token, followed by either a :<space> or <space># separator, followed by a string value (this is inspired by the git trailer convention)."
+
+	var separator string
+
+	colonSpaceIdx := strings.Index(s, ": ")
+	spaceHashIdx := strings.Index(s, " #")
+
+	fmt.Printf("string: '%s', colon: %d, hash: %d\n", s, colonSpaceIdx, spaceHashIdx)
+
+	if colonSpaceIdx == -1 && spaceHashIdx == -1 {
+		// Neither were found
+		return "", "", false
+	} else if colonSpaceIdx == -1 {
+		separator = " #"
+	} else if spaceHashIdx == -1 || colonSpaceIdx < spaceHashIdx {
+		separator = ": "
+	} else {
+		separator = " #"
+	}
+
+	footer, value, found := strings.Cut(s, separator)
+	if !found {
+		panic(fmt.Sprintf("expected '%s' separator not found", separator))
+	}
+
+	value = strings.TrimSpace(value)
+
+	if strings.ContainsAny(footer, " \t") && (footer != "BREAKING CHANGE" || separator != ": ") {
+		// Footer contains whitespace, and was not "BREAKING CHANGE" with a colon separator
+		return "", "", false
+	}
+
+	return footer, value, true
+}
