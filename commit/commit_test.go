@@ -34,7 +34,7 @@ func TestParse(t *testing.T) {
 
 	assert.ElementsMatch(t, []Diagnostic{
 		{
-			Range: helper.LineRange(0, 0, len(commitMsg)-1),
+			Range: helper.LineRange(0, 0, len(commitMsg)),
 			Type:  NoTypeScopeError,
 		},
 	}, diagnostics)
@@ -57,9 +57,34 @@ func TestParse(t *testing.T) {
 		Description: "description",
 	}, commit)
 
-	// TODO: No type: "(scope): description"
+	commit, diagnostics = Parse("type(scope: description")
+
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 4, 4),
+			Type:  UnmatchedLeftParenError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "type",
+		Scope:       "scope",
+		Description: "description",
+	}, commit)
+	commit, diagnostics = Parse("typescope): description")
+
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 9, 9),
+			Type:  UnmatchedRightParenError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "typescope",
+		Scope:       "",
+		Description: "description",
+	}, commit)
+
+	// TODO: Empty type: "(scope): description"
 	// TODO: Empty scope: "type(): description"
 	// TODO: No description: "type(scope):"
-	// TODO: Unmatched '(': "type(scope: description"
-	// TODO: Unmatched ')': "typescope): description"
 }

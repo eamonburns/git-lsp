@@ -76,6 +76,8 @@ func Parse(text string) (Commit, []Diagnostic) {
 				commit.Scope = typeScope[lParIdx+1 : rParIdx]
 			}
 		} else if idx := strings.Index(typeScope, ")"); idx != -1 {
+			// There wasn't a '(', but there was a ')'
+
 			diagnostics = append(diagnostics, Diagnostic{
 				Range: helper.LineRange(0, idx, idx),
 				Type:  UnmatchedRightParenError,
@@ -86,13 +88,14 @@ func Parse(text string) (Commit, []Diagnostic) {
 		}
 	} else {
 		diagnostics = append(diagnostics, Diagnostic{
-			Range: helper.LineRange(0, 0, len(header)-1),
+			Range: helper.LineRange(0, 0, len(header)),
 			Type:  NoTypeScopeError,
 		})
 		commit.Description = typeScope // Header line wasn't split, so typeScope is the whole line, which we will use as the description
 	}
 
 	// TODO: Parse body/footers
+	// NOTE: Ignore all lines starting with #
 	_ = rest
 
 	return commit, diagnostics
