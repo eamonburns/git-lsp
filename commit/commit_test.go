@@ -9,29 +9,26 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	commit, diagnostics := Parse("feat(thing)!: cool")
+	commit, diagnostics := Parse("type(scope)!: description")
 	require.Empty(t, diagnostics)
-
 	assert.Equal(t, Commit{
-		Type:           "feat",
-		Scope:          "thing",
-		BreakingChange: "cool",
-		Description:    "cool",
+		Type:           "type",
+		Scope:          "scope",
+		BreakingChange: "description",
+		Description:    "description",
 	}, commit)
 
-	commit, diagnostics = Parse("hi: ollo")
+	commit, diagnostics = Parse("type: description")
 	require.Empty(t, diagnostics)
-
 	assert.Equal(t, Commit{
-		Type:           "hi",
+		Type:           "type",
 		Scope:          "",
 		BreakingChange: "",
-		Description:    "ollo",
+		Description:    "description",
 	}, commit)
 
-	commitMsg := "no type or scope"
+	commitMsg := "description"
 	commit, diagnostics = Parse(commitMsg)
-
 	assert.ElementsMatch(t, []Diagnostic{
 		{
 			Range: helper.LineRange(0, 0, len(commitMsg)),
@@ -43,7 +40,6 @@ func TestParse(t *testing.T) {
 	}, commit)
 
 	commit, diagnostics = Parse("type(scope)bla: description")
-
 	assert.ElementsMatch(t, []Diagnostic{
 		{
 			Range: helper.LineRange(0, 11, 14),
@@ -58,7 +54,6 @@ func TestParse(t *testing.T) {
 	}, commit)
 
 	commit, diagnostics = Parse("type(scope: description")
-
 	assert.ElementsMatch(t, []Diagnostic{
 		{
 			Range: helper.LineRange(0, 4, 4),
@@ -70,8 +65,8 @@ func TestParse(t *testing.T) {
 		Scope:       "scope",
 		Description: "description",
 	}, commit)
-	commit, diagnostics = Parse("typescope): description")
 
+	commit, diagnostics = Parse("typescope): description")
 	assert.ElementsMatch(t, []Diagnostic{
 		{
 			Range: helper.LineRange(0, 9, 9),
@@ -84,7 +79,49 @@ func TestParse(t *testing.T) {
 		Description: "description",
 	}, commit)
 
-	// TODO: Empty type: "(scope): description"
-	// TODO: Empty scope: "type(): description"
+	commit, diagnostics = Parse("(scope): description")
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 0, 0),
+			Type:  EmptyTypeError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "",
+		Scope:       "scope",
+		Description: "description",
+	}, commit)
+
+	commit, diagnostics = Parse("type(): description")
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 4, 6),
+			Type:  EmptyScopeError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "type",
+		Scope:       "",
+		Description: "description",
+	}, commit)
+
+	commit, diagnostics = Parse("(): description")
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 0, 2),
+			Type:  EmptyScopeError,
+		},
+		{
+			Range: helper.LineRange(0, 0, 0),
+			Type:  EmptyTypeError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "-",
+		Scope:       "-",
+		Description: "description",
+	}, commit)
+
 	// TODO: No description: "type(scope):"
+	// TODO: No space after colon: "type(scope):description"
 }

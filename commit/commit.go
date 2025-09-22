@@ -19,7 +19,9 @@ type Commit struct {
 	Scope string
 
 	// Description of the breaking change (if any)
-	// If the breaking change is specified by a "!" in the type/scope prefix, then this will be the same as Description
+	// If the breaking change is specified by a "!" in the type/scope
+	// prefix, and there is no BREAKING CHANGE footer, then this will
+	// be the same as Description
 	BreakingChange string
 
 	Description string
@@ -31,12 +33,12 @@ type Commit struct {
 
 func Parse(text string) (Commit, []Diagnostic) {
 	diagnostics := []Diagnostic{}
-	header, rest, found := strings.Cut(text, "\n")
+	header, rest, _ := strings.Cut(text, "\n")
 
 	commit := Commit{}
 
-	typeScope, description, found := strings.Cut(header, ": ")
-	if found {
+	typeScope, description, foundTypeScope := strings.Cut(header, ": ")
+	if foundTypeScope {
 		commit.Description = description
 
 		// Check for breaking change "!"
@@ -98,6 +100,19 @@ func Parse(text string) (Commit, []Diagnostic) {
 	// NOTE: Ignore all lines starting with #
 	_ = rest
 
+	if foundTypeScope && commit.Type == "" {
+		diagnostics = append(diagnostics, Diagnostic{
+			Range: helper.LineRange(0, 0, 0),
+			Type:  EmptyTypeError,
+		})
+	}
+	if idx := strings.Index(typeScope, "("); idx != -1 && foundTypeScope && commit.Scope == "" {
+		diagnostics = append(diagnostics, Diagnostic{
+			Range: helper.LineRange(0, len(commit.Type), len(commit.Type)+2),
+			Type:  EmptyScopeError,
+		})
+	}
+
 	return commit, diagnostics
 }
 
@@ -105,15 +120,19 @@ type DiagnosticType int
 
 // Diagnostic error/warning types
 const (
-	// There was no type/scope in the header line
+	// There was no type/scope in the header line (e.g. "description")
 	NoTypeScopeError DiagnosticType = iota
-	// There was a right parentheses in the type/scope, but no matching left parentheses
-	UnmatchedRightParenError
-	// There was a left parentheses in the type/scope, but no matching right parentheses
+	// There was a left parentheses in the type/scope, but no matching right parentheses (e.g. "type(scope: description")
 	UnmatchedLeftParenError
-	// There were extra characters after the scope
+	// There was a right parentheses in the type/scope, but no matching left parentheses (e.g. "typescope): description")
+	UnmatchedRightParenError
+	// There were extra characters after the scope (e.g. "type(scope)bla: description")
 	// Args: 0 = characters
 	ExtraCharactersAfterScopeError
+	// The type in the type/scope was empty (e.g. "(scope): description")
+	EmptyTypeError
+	// The scope in the type/scope was empty (e.g. "type(): description")
+	EmptyScopeError
 )
 
 type Diagnostic struct {
@@ -124,24 +143,23 @@ type Diagnostic struct {
 
 func (self Diagnostic) ToLspDiagnostic() lsp.Diagnostic {
 	var message string
-	var severity int
+	var severity int = 1
 
 	switch self.Type {
 	case NoTypeScopeError:
 		message = "No type/scope in header line"
-		severity = 1
 	case UnmatchedLeftParenError:
 		message = "Unmatched '('"
-		severity = 1
 	case UnmatchedRightParenError:
 		message = "Unmatched ')'"
-		severity = 1
 	case ExtraCharactersAfterScopeError:
 		message = fmt.Sprintf("Extra characters after scope: '%s'", self.Args[0])
-		severity = 1
+	case EmptyTypeError:
+		message = "Empty type"
+	case EmptyScopeError:
+		message = "Empty scope"
 	default:
 		message = "Unknown error"
-		severity = 1
 	}
 
 	return lsp.Diagnostic{
