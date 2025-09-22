@@ -117,11 +117,34 @@ func TestParse(t *testing.T) {
 		},
 	}, diagnostics)
 	assert.Equal(t, Commit{
-		Type:        "-",
-		Scope:       "-",
+		Type:        "",
+		Scope:       "",
 		Description: "description",
 	}, commit)
 
-	// TODO: No description: "type(scope):"
-	// TODO: No space after colon: "type(scope):description"
+	commit, diagnostics = Parse("type(scope):")
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 12, 12),
+			Type:  EmptyDescriptionError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "type",
+		Scope:       "scope",
+		Description: "",
+	}, commit)
+
+	commit, diagnostics = Parse("type(scope):description")
+	assert.ElementsMatch(t, []Diagnostic{
+		{
+			Range: helper.LineRange(0, 12, 12),
+			Type:  NoSpaceBeforeDescriptionError,
+		},
+	}, diagnostics)
+	assert.Equal(t, Commit{
+		Type:        "type",
+		Scope:       "scope",
+		Description: "description",
+	}, commit)
 }

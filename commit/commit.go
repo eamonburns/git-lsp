@@ -37,8 +37,21 @@ func Parse(text string) (Commit, []Diagnostic) {
 
 	commit := Commit{}
 
-	typeScope, description, foundTypeScope := strings.Cut(header, ": ")
+	typeScope, description, foundTypeScope := strings.Cut(header, ":")
 	if foundTypeScope {
+		if strings.TrimSpace(description) == "" {
+			diagnostics = append(diagnostics, Diagnostic{
+				Range: helper.LineRange(0, len(typeScope)+1, len(header)),
+				Type:  EmptyDescriptionError,
+			})
+		} else if description[0] != ' ' {
+			diagnostics = append(diagnostics, Diagnostic{
+				Range: helper.LineRange(0, len(typeScope)+1, len(typeScope)+1),
+				Type:  NoSpaceBeforeDescriptionError,
+			})
+		}
+
+		description = strings.TrimSpace(description)
 		commit.Description = description
 
 		// Check for breaking change "!"
@@ -133,6 +146,10 @@ const (
 	EmptyTypeError
 	// The scope in the type/scope was empty (e.g. "type(): description")
 	EmptyScopeError
+	// The description was empty (e.g. "type(scope):", "type(scope):    ")
+	EmptyDescriptionError
+	// There was no space between the colon and description (e.g. "type(scope):description")
+	NoSpaceBeforeDescriptionError
 )
 
 type Diagnostic struct {
@@ -158,6 +175,10 @@ func (self Diagnostic) ToLspDiagnostic() lsp.Diagnostic {
 		message = "Empty type"
 	case EmptyScopeError:
 		message = "Empty scope"
+	case EmptyDescriptionError:
+		message = "Empty description"
+	case NoSpaceBeforeDescriptionError:
+		message = "No space before description"
 	default:
 		message = "Unknown error"
 	}
